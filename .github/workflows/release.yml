@@ -1,0 +1,191 @@
+name: Release
+
+# Push a version tag (e.g. 1.0.0 — no leading "v") to build every platform
+# and publish a GitHub Release with the matching CHANGELOG.md section as the
+# release notes, plus the binaries. Same convention as the author's other
+# projects (e.g. TypeBridge):
+#
+#   git tag 1.0.0 && git push origin 1.0.0
+#
+# The tag push must come from a real git identity, not the default
+# GITHUB_TOKEN — GitHub suppresses events created by GITHUB_TOKEN from
+# triggering other workflows, so a bot-pushed tag would never fire this.
+#
+# Android note: release APKs are signed with a persistent upload keystore
+# decoded from repo secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) — the same key is reused across the
+# author's apps, so it is never committed to the repo, only stored as a
+# GitHub Actions secret. Because it's persistent, APKs from different releases
+# install over one another as an update.
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  FLUTTER_VERSION: '3.44.8'
+  VERSION: ${{ github.ref_name }}
+
+permissions:
+  contents: write
+
+jobs:
+  analyze_test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  create_release:
+    name: Create release
+    needs: analyze_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract changelog section
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+
+          version = os.environ["VERSION"]
+          content = open("CHANGELOG.md", encoding="utf-8").read()
+          pattern = rf"^## \[{re.escape(version)}\].*?(?=^## \[|\Z)"
+          match = re.search(pattern, content, re.S | re.M)
+          notes = match.group(0).strip() if match else f"Release {version}"
+          with open("release_notes.md", "w", encoding="utf-8") as f:
+              f.write(notes)
+          PY
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes-file release_notes.md \
+            --verify-tag
+
+  build_android:
+    name: Build & upload Android APKs
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - name: Decode release signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          {
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "storeFile=release.keystore"
+          } > android/key.properties
+      - run: flutter build apk --release --split-per-abi
+      - name: Rename artifacts
+        run: |
+          cd build/app/outputs/flutter-apk
+          for f in app-*-release.apk; do
+            arch="${f#app-}"; arch="${arch%-release.apk}"
+            mv "$f" "zerogate-${VERSION}-${arch}.apk"
+          done
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$VERSION" build/app/outputs/flutter-apk/zerogate-*.apk --clobber
+
+  build_linux:
+    name: Build & upload Linux bundle
+    needs: create_release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Install Linux desktop build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev liblzma-dev
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Package bundle
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf "$GITHUB_WORKSPACE/zerogate-${VERSION}-linux-x64.tar.gz" .
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$VERSION" "zerogate-${VERSION}-linux-x64.tar.gz" --clobber
+
+  build_windows:
+    name: Build & upload Windows bundle
+    needs: create_release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter config --enable-windows-desktop
+      - run: flutter pub get
+      - name: Build Windows
+        # See the equivalent step in ci.yml: local_auth_windows' generated
+        # C++ still uses <experimental/coroutine>, a hard error on newer MSVC.
+        env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+        run: flutter build windows --release
+      - name: Package bundle
+        shell: pwsh
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "zerogate-$env:VERSION-windows-x64.zip"
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$VERSION" "zerogate-${VERSION}-windows-x64.zip" --clobber
+
+  build_macos:
+    name: Build & upload macOS bundle
+    needs: create_release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter config --enable-macos-desktop
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Package bundle
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r "$GITHUB_WORKSPACE/zerogate-${VERSION}-macos.zip" "ZeroGate.app"
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$VERSION" "zerogate-${VERSION}-macos.zip" --clobber

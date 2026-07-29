@@ -1,0 +1,201 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:local_auth/local_auth.dart';
+import '../core/constants.dart';
+import '../data/local_storage.dart';
+import 'accounts_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../widgets/copyright_footer.dart';
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _passController = TextEditingController();
+  bool _obscurePassword = true;
+
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _canCheckBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  bool get _supportsBiometricAuth {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.windows;
+  }
+
+  Future<void> _checkBiometrics() async {
+    if (!_supportsBiometricAuth) return;
+    try {
+      final canCheck =
+          await auth.canCheckBiometrics || await auth.isDeviceSupported();
+      if (mounted) {
+        setState(() {
+          _canCheckBiometrics = canCheck;
+        });
+      }
+      if (canCheck) {
+        _authenticate();
+      }
+    } catch (e) {
+      debugPrint('Erro ao checar biometria: $e');
+    }
+  }
+
+  Future<void> _authenticate() async {
+    if (!_supportsBiometricAuth) return;
+    try {
+      final authenticated = await auth.authenticate(
+        localizedReason: context.l10n.text('biometricReason'),
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: false,
+        ),
+      );
+      if (authenticated) {
+        await LocalStorage.login();
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AccountsScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro na autenticacao: $e');
+    }
+  }
+
+  void _login() async {
+    if (await LocalStorage.verifyAppPassword(_passController.text)) {
+      await LocalStorage.login();
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AccountsScreen()),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.text('credentialsInvalid')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _passController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset('assets/icon.png', width: 100, height: 100),
+                  const SizedBox(height: 24),
+                  Text(
+                    context.l10n.text('appName'),
+                    style: const TextStyle(
+                        fontSize: 28, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 48),
+                  if (_canCheckBiometrics) ...[
+                    const Icon(Icons.fingerprint, size: 80, color: Colors.grey),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _authenticate,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(
+                          context.l10n.text('loginBiometric'),
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () =>
+                          setState(() => _canCheckBiometrics = false),
+                      child: Text(
+                        context.l10n.text('usePassword'),
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ] else ...[
+                    TextField(
+                      autofocus: true,
+                      controller: _passController,
+                      obscureText: _obscurePassword,
+                      onSubmitted: (_) => _login(),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('password'),
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(context.l10n.text('login'),
+                            style: const TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: CopyrightFooter(),
+          ),
+        ],
+      ),
+    );
+  }
+}

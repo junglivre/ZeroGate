@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FLUTTER_VERSION: '3.44.8'
+
+jobs:
+  analyze_test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  build_android:
+    name: Build Android (debug)
+    needs: analyze_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter pub get
+      # android/app/build.gradle.kts evaluates the `release` buildType (and
+      # its signing check) during Gradle's configuration phase regardless of
+      # which task runs, so even a debug build needs a throwaway
+      # key.properties/keystore present or the build fails at configuration
+      # time. Never persisted anywhere — generated fresh every run.
+      - name: Generate throwaway signing key (test-only, not persisted)
+        run: |
+          STORE_PASS=$(openssl rand -hex 24)
+          KEY_PASS=$(openssl rand -hex 24)
+          keytool -genkey -v -keystore android/app/release.keystore -storetype JKS \
+            -keyalg RSA -keysize 2048 -validity 10000 -alias release \
+            -dname "CN=ZeroGate CI, OU=CI, O=CI, L=CI, S=CI, C=BR" \
+            -storepass "$STORE_PASS" -keypass "$KEY_PASS" > /dev/null
+          {
+            echo "storePassword=$STORE_PASS"
+            echo "keyPassword=$KEY_PASS"
+            echo "keyAlias=release"
+            echo "storeFile=release.keystore"
+          } > android/key.properties
+      - run: flutter build apk --debug --split-per-abi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 14
+
+  build_linux:
+    name: Build Linux
+    needs: analyze_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Install Linux desktop build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev liblzma-dev
+      - run: flutter config --enable-linux-desktop
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Package bundle
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf "$GITHUB_WORKSPACE/zerogate-linux-x64.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-bundle
+          path: zerogate-linux-x64.tar.gz
+          retention-days: 14
+
+  build_windows:
+    name: Build Windows
+    needs: analyze_test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter config --enable-windows-desktop
+      - run: flutter pub get
+      - name: Build Windows
+        # local_auth_windows' generated C++ still uses <experimental/coroutine>,
+        # which newer MSVC toolsets (VS 2026/Enterprise "18") turn into a hard
+        # error instead of a warning. Silence it via the CL env var, which
+        # cl.exe prepends to every invocation, instead of touching the plugin.
+        env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+        run: flutter build windows --release
+      - name: Package bundle
+        shell: pwsh
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath zerogate-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-bundle
+          path: zerogate-windows-x64.zip
+          retention-days: 14
+
+  build_macos:
+    name: Build macOS
+    needs: analyze_test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - run: flutter config --enable-macos-desktop
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Package bundle
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r "$GITHUB_WORKSPACE/zerogate-macos.zip" "ZeroGate.app"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-bundle
+          path: zerogate-macos.zip
+          retention-days: 14

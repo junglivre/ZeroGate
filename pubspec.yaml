@@ -1,0 +1,40 @@
+name: zerogate
+description: "Aplicativo Flutter multiplataforma para gerenciar Cloudflare Zero Trust: túneis, rotas (public hostnames) e Access Apps."
+publish_to: 'none'
+version: 1.0.0+4
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.2.1
+  shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
+  crypto: ^3.0.3
+  local_auth: ^2.2.0
+  url_launcher: ^6.3.1
+  flutter_markdown_plus: ^1.0.12
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon.png"
+  min_sdk_size: 21
+
+flutter:
+  uses-material-design: true
+  assets:
+    - CHANGELOG.md
+    - assets/changelog/
+    - assets/icon.png

@@ -1,0 +1,27 @@
+services:
+  test:
+    build:
+      context: ../..
+      dockerfile: Docker/Android/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../..:/app
+    command: bash -c "flutter pub get && flutter run -d web-server --web-port 8080 --web-hostname 0.0.0.0"
+    depends_on:
+      - proxy
+
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx-cors.conf:/etc/nginx/nginx.conf:ro
+
+  build:
+    build:
+      context: ../..
+      dockerfile: Docker/Android/Dockerfile
+    volumes:
+      - ../..:/app
+    command: bash -c "flutter pub get && flutter build apk --release && chown -R 1000:1000 build/"

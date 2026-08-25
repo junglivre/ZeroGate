@@ -1,11 +1,11 @@
 <img src="assets/icon.png" alt="ZeroGate" width="80">
 
-[English](README.md) | Português | [Español](README.es.md)
-
 # ZeroGate
 
 [![CI](https://github.com/junglivre/ZeroGate/actions/workflows/ci.yml/badge.svg)](https://github.com/junglivre/ZeroGate/actions/workflows/ci.yml)
 ![License](https://img.shields.io/badge/license-MIT-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white) ![Platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Web-informational)
+
+[English](README.md) | Português | [Español](README.es.md)
 
 Aplicativo em Flutter para gerenciar Cloudflare Zero Trust direto do celular ou desktop: túneis (Cloudflare Tunnel), suas rotas (Public Hostname) e Access Apps com suas políticas — sem precisar abrir o dashboard.
 

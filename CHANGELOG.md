@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-08-25
+### Added
+- A concise token-creation guide is shown when no Cloudflare API token is configured.
+
+### Security
+- Revealing the stored API token now requires the app password or platform biometric authentication.
+
 ## [1.0.0] - 2026-07-28
 ### First release
 - Local password authentication, with biometric login on platforms that support it.

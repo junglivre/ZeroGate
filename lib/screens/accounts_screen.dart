@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/constants.dart';
 import '../data/cloudflare_api.dart';
 import '../data/local_storage.dart';
@@ -7,6 +8,7 @@ import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'login_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/token_setup_guide.dart';
 
 /// Loads the accounts the configured API Token can see and either lets the
 /// user pick one (multiple accounts) or jumps straight into [HomeScreen]
@@ -24,6 +26,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   bool _isLoading = true;
   String? _error;
   int _loadId = 0;
+  bool? _tokenConfigured;
 
   @override
   void initState() {
@@ -57,10 +60,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
     if (token == null || token.isEmpty) {
       setState(() {
         _isLoading = false;
-        _error = context.l10n.text('tokenNotConfigured');
+        _tokenConfigured = false;
       });
       return;
     }
+    setState(() => _tokenConfigured = true);
 
     try {
       final accounts = <dynamic>[];
@@ -97,7 +101,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
     } catch (e) {
       if (!mounted || loadId != _loadId) return;
       setState(() {
-        _error = context.l10n.text('accountsLoadError', values: {'error': '$e'});
+        _error =
+            context.l10n.text('accountsLoadError', values: {'error': '$e'});
         _isLoading = false;
       });
     }
@@ -169,6 +174,25 @@ class _AccountsScreenState extends State<AccountsScreen> {
     }
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    if (mounted) _loadAccounts();
+  }
+
+  Future<void> _openTokenPage() async {
+    final opened = await launchUrl(
+      Uri.parse('https://dash.cloudflare.com/profile/api-tokens'),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('unableOpenLink'))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,12 +201,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-              _loadAccounts();
-            },
+            onPressed: _openSettings,
           ),
           IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
@@ -194,6 +213,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Widget _buildBody() {
     if (_isLoading && _accounts.isEmpty) {
       return const Center(child: CircularProgressIndicator());
+    }
+    if (_tokenConfigured == false) {
+      return TokenSetupGuide(
+        openCloudflare: _openTokenPage,
+        configureToken: _openSettings,
+      );
     }
 
     if (_error != null && _accounts.isEmpty) {
@@ -207,21 +232,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: AppColors.error)),
               const SizedBox(height: 16),
-              if (_error!.contains('Token'))
-                ElevatedButton(
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                    );
-                    _loadAccounts();
-                  },
-                  child: Text(context.l10n.text('configureToken')),
-                )
-              else
-                ElevatedButton(
-                  onPressed: _loadAccounts,
-                  child: Text(context.l10n.text('retry')),
-                ),
+              ElevatedButton(
+                onPressed: _loadAccounts,
+                child: Text(context.l10n.text('retry')),
+              ),
             ],
           ),
         ),
@@ -241,9 +255,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
           if (showDivider && index == pinnedCount) {
             return const Divider(height: 24, indent: 16, endIndent: 16);
           }
-          final account = accounts[showDivider && index > pinnedCount
-              ? index - 1
-              : index];
+          final account =
+              accounts[showDivider && index > pinnedCount ? index - 1 : index];
           final isPinned = _pinnedIds.contains(account['id']);
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -257,8 +270,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                   color: isPinned ? AppColors.primary : null,
                 ),
-                tooltip: context.l10n
-                    .text(isPinned ? 'unpinAccount' : 'pinAccount'),
+                tooltip:
+                    context.l10n.text(isPinned ? 'unpinAccount' : 'pinAccount'),
                 onPressed: () => _togglePinned(account['id']),
               ),
               onTap: () => _selectAccount(account),

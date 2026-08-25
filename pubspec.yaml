@@ -1,7 +1,7 @@
 name: zerogate
 description: "Aplicativo Flutter multiplataforma para gerenciar Cloudflare Zero Trust: túneis, rotas (public hostnames) e Access Apps."
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.1+5
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

@@ -1,6 +1,6 @@
 # ZeroGate - Android
 
-Guia específico para testar e gerar o APK Android. Para funcionalidades comuns, configuração do token e arquitetura geral, consulte o [README principal](README.md).
+Guia específico para testar e gerar os artefatos Android. Para funcionalidades comuns, configuração do token e arquitetura geral, consulte o [README principal](README.md).
 
 No Android, o app suporta login por senha e biometria quando o dispositivo e o sistema operacional oferecem suporte.
 
@@ -24,7 +24,7 @@ http://localhost:8080
 
 O serviço `proxy` em `http://localhost:8081` existe para encaminhar chamadas da API Cloudflare durante o teste web.
 
-### Build do APK
+### Build do APK e AAB
 
 ```bash
 docker compose -f Docker/Android/docker-compose.yml run --rm build
@@ -36,16 +36,28 @@ O APK release será gerado em:
 build/app/outputs/flutter-apk/
 ```
 
-## Assinatura do APK
+Para gerar o Android App Bundle enviado à Google Play:
 
-O build Android release exige `android/key.properties` com as credenciais da keystore persistente. Sem esse arquivo, o Gradle interrompe o build release.
+```bash
+flutter build appbundle --release
+```
 
-Arquivos de keystore e `android/key.properties` devem permanecer fora do Git.
+O AAB será gerado em:
+
+```text
+build/app/outputs/bundle/release/app-release.aab
+```
+
+## Assinatura dos artefatos
+
+Os builds Android release exigem `android/key.properties` com as credenciais da keystore persistente. Sem esse arquivo, o Gradle interrompe o build.
+
+Arquivos de keystore e `android/key.properties` devem permanecer fora do Git. Use sempre a mesma keystore persistente para assinar os AABs enviados à Google Play.
 
 ## Detalhes da Plataforma
 
 - Plataforma alvo: Android.
-- Artefato gerado: APK.
+- Artefatos gerados: APK e AAB.
 - Docker dedicado: `Docker/Android/Dockerfile`.
 - Compose dedicado: `Docker/Android/docker-compose.yml`.
 - Pacote: `moe.jung.zerogate`.

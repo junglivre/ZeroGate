@@ -47,6 +47,7 @@ Para executar depois do build:
 - Ícone e nome da janela são aplicados pelo runner GTK em `linux/runner/my_application.cc`.
 - Plugins Linux usados pelo projeto incluem `shared_preferences_linux`, `flutter_secure_storage_linux` e `url_launcher_linux`.
 - O armazenamento seguro usa `libsecret`; por isso o pacote `libsecret-1-0` é necessário em runtime e `libsecret-1-dev` em build.
+- Cada [release](https://github.com/junglivre/ZeroGate/releases) publica o Linux em três formatos: `.tar.gz` (bundle genérico, extrair e rodar), `.deb` (instala em `/opt/zerogate` via `dpkg -i`) e `.rpm` (via `rpm -i` ou `dnf install`).
 
 ## Sessão
 

@@ -24,7 +24,7 @@ Este README contém as informações compartilhadas entre as plataformas. Para c
 - Autenticação local por senha, com login por biometria nas plataformas que suportam essa integração.
 - Logout automático ao fechar e reabrir o aplicativo, exigindo novo login.
 - Seleção/troca entre as contas Cloudflare que o token enxerga.
-- Lista de túneis Cloudflare Tunnel com status (saudável, degradado, inativo) e conectores ativos.
+- Lista de túneis Cloudflare Tunnel com status (saudável, degradado, inativo), conectores ativos, tempo de atividade por túnel e as rotas de rede privada do túnel (rotas CIDR somente leitura, marcadas quando o range também é roteado por outro túnel).
 - Editor de rotas (Public Hostname / ingress rules) de cada túnel: criar, editar e excluir hostname → serviço local, com seletor de tipo de destino (http, https, tcp, ssh, rdp, smb, unix, unix+tls) e configurações avançadas de HTTP/HTTPS (TLS/SSL do destino, SNI, cabeçalho Host, HTTP/2, timeouts, keep-alive, proxy).
 - Lista de Access Apps (self-hosted) com criação, edição de nome/domínio/duração de sessão e exclusão.
 - Editor de políticas de Access por app: ação (Permitir/Bloquear/Bypass/Service Auth) e regras Incluir/Excluir/Exigir para os seletores mais comuns (e-mail, domínio de e-mail, todos, IP). Regras com seletores não suportados pelo editor são preservadas sem alteração.
@@ -71,12 +71,12 @@ Ao criar o token, em **Account Resources** selecione todas as contas que deseja 
 ## Build automático (GitHub Actions)
 
 - **CI** (`.github/workflows/ci.yml`): roda em todo push/PR para `main`. Executa `flutter analyze` + `flutter test` e, se passar, builda Android (debug, split por ABI), Linux, macOS e Windows, disponibilizando cada um como *artifact* do workflow (aba **Actions** do repositório) — útil pra baixar e testar qualquer commit sem esperar uma release.
-- **Release** (`.github/workflows/release.yml`): disparado ao empurrar uma tag de versão (ex.: `git tag 1.0.0 && git push origin 1.0.0` — sem `v` na frente, mesma convenção usada nos outros projetos do autor). Cria a [GitHub Release](https://github.com/junglivre/ZeroGate/releases) usando a seção equivalente do `CHANGELOG.md` como notas, depois builda as quatro plataformas em modo release e anexa os arquivos nela.
+- **Release** (`.github/workflows/release.yml`): disparado ao empurrar uma tag de versão (ex.: `git tag 1.0.0 && git push origin 1.0.0` — sem `v` na frente, mesma convenção usada nos outros projetos do autor). Cria a [GitHub Release](https://github.com/junglivre/ZeroGate/releases) usando a seção equivalente do `CHANGELOG.md` como notas, depois builda as quatro plataformas em modo release e anexa os arquivos nela (Linux sai como bundle `.tar.gz` mais pacotes `.deb`/`.rpm`).
 - **Assinatura do Android**: os APKs de release são assinados com uma keystore de upload persistente, decodificada em tempo de build a partir dos secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` e `ANDROID_KEY_PASSWORD` — nunca commitada no repositório. É a mesma chave de upload usada nos demais apps do autor (é assim que o Play App Signing funciona: a chave de upload só autentica o envio, o Google gerencia a chave de assinatura real de cada app). Como a chave é persistente, os APKs de releases consecutivas instalam um por cima do outro como atualização.
 
 ## Escopo e limitações conhecidas
 
-- Rotas gerenciadas são as regras de ingress/Public Hostname do túnel (o que aparece na aba "Public Hostname" do dashboard). O app não gerencia roteamento de rede privada por CIDR/hostname (`teamnet/routes`, usado por WARP/Cloudflare Mesh).
+- Rotas gerenciadas são as regras de ingress/Public Hostname do túnel (o que aparece na aba "Public Hostname" do dashboard) — essas são editáveis. O roteamento de rede privada por CIDR (`teamnet/routes`, usado por WARP/Cloudflare Mesh) é exibido somente leitura na tela de detalhe do túnel; o app não cria nem edita essas rotas.
 - Conectores do túnel são somente leitura — são geridos pelo daemon `cloudflared`, não por este app.
 - O editor de políticas de Access cobre os seletores mais comuns (e-mail, domínio de e-mail, todos, IP). Seletores mais avançados (grupos de IdP, postura de dispositivo, geolocalização, service tokens) precisam do painel Cloudflare; o app preserva essas regras sem descartá-las.
 

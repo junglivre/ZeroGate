@@ -18,7 +18,7 @@ This README contains information shared by all platforms. For build commands, te
 - Local password authentication, with biometric login on platforms that support it.
 - Automatic logout when the application is closed and reopened.
 - Selecting/switching between the Cloudflare accounts the token can see.
-- Cloudflare Tunnel list with status (healthy, degraded, down) and active connectors.
+- Cloudflare Tunnel list with status (healthy, degraded, down), active connectors, and per-tunnel uptime, plus the tunnel's private-network routes (read-only CIDR routes, flagged when a range is also routed by another tunnel).
 - Route editor (Public Hostname / ingress rules) for each tunnel: create, edit, and delete hostname → local service mappings, with a destination type selector (http, https, tcp, ssh, rdp, smb, unix, unix+tls) and advanced HTTP/HTTPS settings (origin TLS/SSL verification, SNI, Host header, HTTP/2, timeouts, keep-alive, proxying).
 - Access App list (self-hosted) with creation, editing of name/domain/session duration, and deletion.
 - Per-app Access policy editor: action (Allow/Block/Bypass/Service Auth) and Include/Exclude/Require rules for the most common selectors (email, email domain, everyone, IP). Rules using selectors the editor doesn't support are preserved unchanged.
@@ -64,12 +64,12 @@ When creating the token, under **Account Resources** select every account you wa
 ## Automated builds (GitHub Actions)
 
 - **CI** (`.github/workflows/ci.yml`): runs on every push/PR to `main`. Runs `flutter analyze` + `flutter test` and, if that passes, builds Android (debug, split per ABI), Linux, macOS, and Windows, publishing each as a workflow *artifact* (repo's **Actions** tab) — handy for grabbing and testing any commit without waiting for a release.
-- **Release** (`.github/workflows/release.yml`): triggered by pushing a version tag (e.g. `git tag 1.0.0 && git push origin 1.0.0` — no leading `v`, same convention as the author's other projects). Creates the [GitHub Release](https://github.com/junglivre/ZeroGate/releases) using the matching `CHANGELOG.md` section as the notes, then builds all four platforms in release mode and attaches the files to it.
+- **Release** (`.github/workflows/release.yml`): triggered by pushing a version tag (e.g. `git tag 1.0.0 && git push origin 1.0.0` — no leading `v`, same convention as the author's other projects). Creates the [GitHub Release](https://github.com/junglivre/ZeroGate/releases) using the matching `CHANGELOG.md` section as the notes, then builds all four platforms in release mode and attaches the files to it (Linux ships as a `.tar.gz` bundle plus `.deb`/`.rpm` packages).
 - **Android signing**: release APKs are signed with a persistent upload keystore, decoded at build time from the `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` repo secrets — never committed to the repo. It's the same upload key used across the author's other apps (that's how Play App Signing is meant to work: the upload key only authenticates uploads, Google manages the actual app signing key per app). Because the key is persistent, APKs from consecutive releases install over each other as an update.
 
 ## Scope and known limitations
 
-- Managed routes are the tunnel's ingress/Public Hostname rules (what shows up under the "Public Hostname" tab in the dashboard). The app does not manage private-network CIDR/hostname routing (`teamnet/routes`, used by WARP/Cloudflare Mesh).
+- Managed routes are the tunnel's ingress/Public Hostname rules (what shows up under the "Public Hostname" tab in the dashboard) — those are editable. Private-network CIDR routing (`teamnet/routes`, used by WARP/Cloudflare Mesh) is shown read-only on the tunnel detail screen; the app does not create or edit it.
 - Tunnel connectors are read-only — they are managed by the `cloudflared` daemon, not by this app.
 - The Access policy editor covers the most common selectors (email, email domain, everyone, IP). More advanced selectors (IdP groups, device posture, geolocation, service tokens) still require the Cloudflare dashboard; the app preserves those rules instead of discarding them.
 

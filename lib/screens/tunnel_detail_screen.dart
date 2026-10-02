@@ -23,6 +23,8 @@ class TunnelDetailScreen extends StatefulWidget {
 class _TunnelDetailScreenState extends State<TunnelDetailScreen> {
   List<dynamic> _connections = [];
   List<dynamic> _routes = [];
+  List<dynamic> _privateRoutes = [];
+  Set<String> _sharedNetworks = {};
   bool _isLoading = true;
   String? _error;
   bool _isSaving = false;
@@ -43,10 +45,29 @@ class _TunnelDetailScreenState extends State<TunnelDetailScreen> {
           await TunnelsApi.getTunnelConnections(widget.accountId, widget.tunnelId);
       final ingress =
           await TunnelsApi.getIngressRules(widget.accountId, widget.tunnelId);
+      final allPrivateRoutes =
+          await TunnelsApi.listPrivateNetworkRoutes(widget.accountId);
       if (!mounted) return;
+      // A network (CIDR) is "shared" when more than one distinct tunnel
+      // routes it — e.g. the same private range reachable through two
+      // tunnels in different virtual networks.
+      final tunnelsByNetwork = <String, Set<String>>{};
+      for (final route in allPrivateRoutes) {
+        final network = route['network']?.toString();
+        final tunnelId = route['tunnel_id']?.toString();
+        if (network == null || tunnelId == null) continue;
+        tunnelsByNetwork.putIfAbsent(network, () => {}).add(tunnelId);
+      }
       setState(() {
         _connections = connections;
         _routes = ingress.where((rule) => rule['hostname'] != null).toList();
+        _privateRoutes = allPrivateRoutes
+            .where((route) => route['tunnel_id'] == widget.tunnelId)
+            .toList();
+        _sharedNetworks = {
+          for (final entry in tunnelsByNetwork.entries)
+            if (entry.value.length > 1) entry.key,
+        };
         _isLoading = false;
       });
     } catch (e) {
@@ -207,6 +228,44 @@ class _TunnelDetailScreenState extends State<TunnelDetailScreen> {
     );
   }
 
+  Widget _buildPrivateRoutesSection() {
+    if (_privateRoutes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Text(context.l10n.text('noPrivateRoutes')),
+      );
+    }
+
+    return Column(
+      children: _privateRoutes.map((route) {
+        final network = route['network']?.toString() ?? '';
+        final virtualNetworkName = route['virtual_network_name']?.toString();
+        final comment = route['comment']?.toString();
+        final isShared = _sharedNetworks.contains(network);
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: ListTile(
+            leading: const Icon(Icons.lan, color: AppColors.primary),
+            title: Text(network, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text([
+              if (virtualNetworkName != null && virtualNetworkName.isNotEmpty)
+                virtualNetworkName,
+              if (comment != null && comment.isNotEmpty) comment,
+            ].join(' · ')),
+            trailing: isShared
+                ? Chip(
+                    label: Text(context.l10n.text('sharedRoute')),
+                    backgroundColor: AppColors.error.withValues(alpha: 0.15),
+                    labelStyle: const TextStyle(
+                        color: AppColors.error, fontSize: 12),
+                  )
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,6 +307,14 @@ class _TunnelDetailScreenState extends State<TunnelDetailScreen> {
                     ),
                   ),
                   _buildRoutesSection(),
+                  const Divider(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(context.l10n.text('privateRoutes'),
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+                  _buildPrivateRoutesSection(),
                   const SizedBox(height: 24),
                 ],
               ),

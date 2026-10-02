@@ -101,6 +101,29 @@ class _TunnelsScreenState extends State<TunnelsScreen>
     }
   }
 
+  /// Uptime of the tunnel as a whole (e.g. "2d 3h 14m"), derived from the
+  /// tunnel's `conns_active_at` timestamp (when it last established a
+  /// connection to the edge). Returns null while the tunnel is offline so
+  /// the uptime is hidden next to the status.
+  String? _tunnelUptime(dynamic tunnel) {
+    final status = tunnel['status']?.toString();
+    if (status != 'healthy' && status != 'degraded') return null;
+    final activeAt =
+        DateTime.tryParse(tunnel['conns_active_at']?.toString() ?? '');
+    if (activeAt == null) return null;
+    final uptime = DateTime.now().toUtc().difference(activeAt.toUtc());
+    if (uptime.isNegative) return null;
+    final days = uptime.inDays;
+    final hours = uptime.inHours % 24;
+    final minutes = uptime.inMinutes % 60;
+    final parts = <String>[
+      if (days > 0) '${days}d',
+      if (days > 0 || hours > 0) '${hours}h',
+      '${minutes}m',
+    ];
+    return parts.join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -169,6 +192,7 @@ class _TunnelsScreenState extends State<TunnelsScreen>
                 final connections = tunnel['connections'];
                 final connectionCount =
                     connections is List ? connections.length : 0;
+                final uptime = _tunnelUptime(tunnel);
 
                 return Card(
                   margin:
@@ -178,11 +202,14 @@ class _TunnelsScreenState extends State<TunnelsScreen>
                         color: _statusColor(status)),
                     title: Text(tunnel['name'] ?? tunnel['id'],
                         style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                      '${_statusLabel(status)} · ${context.l10n.text('connectorsCount', values: {
-                            'count': '$connectionCount',
-                          })}',
-                    ),
+                    subtitle: Text([
+                      _statusLabel(status),
+                      context.l10n.text('connectorsCount',
+                          values: {'count': '$connectionCount'}),
+                      if (uptime != null)
+                        context.l10n.text('uptime',
+                            values: {'duration': uptime}),
+                    ].join(' · ')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(

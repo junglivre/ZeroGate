@@ -32,6 +32,23 @@ class TunnelsApi {
     return result is List ? result : <dynamic>[];
   }
 
+  /// Private Network routes (CIDR routing for WARP clients) across the
+  /// whole account. A single fetch is reused to both list the routes
+  /// assigned to one tunnel and detect whether a route's CIDR is also
+  /// routed by a *different* tunnel (surfaced as "shared" in the tunnel
+  /// detail screen).
+  static Future<List<dynamic>> listPrivateNetworkRoutes(
+      String accountId) async {
+    final routes = <dynamic>[];
+    await for (final route in CloudflareApi.streamPaginated(
+      '/accounts/$accountId/teamnet/routes',
+      extraParams: const {'is_deleted': 'false'},
+    )) {
+      routes.add(route);
+    }
+    return routes;
+  }
+
   /// Ingress rules (Public Hostname routes) currently configured for the
   /// tunnel. Returns an empty list if the tunnel has no remote configuration
   /// yet.

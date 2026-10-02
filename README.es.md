@@ -24,7 +24,7 @@ Este README contiene la información compartida entre las plataformas. Para coma
 - Autenticación local por contraseña, con inicio de sesión biométrico en las plataformas que lo permiten.
 - Cierre de sesión automático al cerrar y volver a abrir la aplicación, exigiendo un nuevo inicio de sesión.
 - Selección/cambio entre las cuentas de Cloudflare que el token puede ver.
-- Lista de túneles Cloudflare Tunnel con estado (saludable, degradado, inactivo) y conectores activos.
+- Lista de túneles Cloudflare Tunnel con estado (saludable, degradado, inactivo), conectores activos, tiempo de actividad por túnel y las rutas de red privada del túnel (rutas CIDR de solo lectura, marcadas cuando el rango también es enrutado por otro túnel).
 - Editor de rutas (Public Hostname / ingress rules) de cada túnel: crear, editar y eliminar asignaciones de hostname → servicio local, con selector de tipo de destino (http, https, tcp, ssh, rdp, smb, unix, unix+tls) y configuraciones avanzadas de HTTP/HTTPS (verificación de TLS/SSL del destino, SNI, encabezado Host, HTTP/2, tiempos de espera, keep-alive, proxy).
 - Lista de Access Apps (self-hosted) con creación, edición de nombre/dominio/duración de sesión y eliminación.
 - Editor de políticas de Access por app: acción (Permitir/Bloquear/Bypass/Service Auth) y reglas Incluir/Excluir/Exigir para los selectores más comunes (correo, dominio de correo, todos, IP). Las reglas con selectores no admitidos por el editor se conservan sin cambios.
@@ -71,12 +71,12 @@ Al crear el token, en **Account Resources** selecciona todas las cuentas que qui
 ## Build automático (GitHub Actions)
 
 - **CI** (`.github/workflows/ci.yml`): se ejecuta en cada push/PR a `main`. Ejecuta `flutter analyze` + `flutter test` y, si pasa, compila Android (debug, dividido por ABI), Linux, macOS y Windows, publicando cada uno como *artifact* del workflow (pestaña **Actions** del repositorio) — útil para descargar y probar cualquier commit sin esperar una release.
-- **Release** (`.github/workflows/release.yml`): se dispara al empujar una etiqueta de versión (ej.: `git tag 1.0.0 && git push origin 1.0.0` — sin `v` al inicio, misma convención usada en los demás proyectos del autor). Crea la [GitHub Release](https://github.com/junglivre/ZeroGate/releases) usando la sección equivalente de `CHANGELOG.md` como notas, luego compila las cuatro plataformas en modo release y adjunta los archivos a ella.
+- **Release** (`.github/workflows/release.yml`): se dispara al empujar una etiqueta de versión (ej.: `git tag 1.0.0 && git push origin 1.0.0` — sin `v` al inicio, misma convención usada en los demás proyectos del autor). Crea la [GitHub Release](https://github.com/junglivre/ZeroGate/releases) usando la sección equivalente de `CHANGELOG.md` como notas, luego compila las cuatro plataformas en modo release y adjunta los archivos a ella (Linux sale como bundle `.tar.gz` más paquetes `.deb`/`.rpm`).
 - **Firma de Android**: los APKs de release se firman con un keystore de subida persistente, decodificado en tiempo de compilación a partir de los secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` y `ANDROID_KEY_PASSWORD` — nunca se sube al repositorio. Es la misma clave de subida usada en las demás apps del autor (así funciona Play App Signing: la clave de subida solo autentica el envío, Google gestiona la clave de firma real de cada app). Como la clave es persistente, los APKs de releases consecutivas se instalan uno sobre otro como actualización.
 
 ## Alcance y limitaciones conocidas
 
-- Las rutas gestionadas son las reglas de ingress/Public Hostname del túnel (lo que aparece en la pestaña "Public Hostname" del dashboard). La app no gestiona el enrutamiento de red privada por CIDR/hostname (`teamnet/routes`, usado por WARP/Cloudflare Mesh).
+- Las rutas gestionadas son las reglas de ingress/Public Hostname del túnel (lo que aparece en la pestaña "Public Hostname" del dashboard) — esas son editables. El enrutamiento de red privada por CIDR (`teamnet/routes`, usado por WARP/Cloudflare Mesh) se muestra de solo lectura en la pantalla de detalle del túnel; la app no crea ni edita esas rutas.
 - Los conectores del túnel son de solo lectura — los gestiona el daemon `cloudflared`, no esta app.
 - El editor de políticas de Access cubre los selectores más comunes (correo, dominio de correo, todos, IP). Los selectores más avanzados (grupos de IdP, postura del dispositivo, geolocalización, service tokens) todavía requieren el dashboard de Cloudflare; la app conserva esas reglas en vez de descartarlas.
 

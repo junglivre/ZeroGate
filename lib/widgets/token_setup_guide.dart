@@ -167,6 +167,18 @@ class _PermissionTableStep extends StatelessWidget {
                       ),
                       _permissionRow(
                         context,
+                        scope: 'tokenGuideZone',
+                        permission: 'Zone',
+                        level: 'tokenGuideRead',
+                      ),
+                      _permissionRow(
+                        context,
+                        scope: 'tokenGuideZone',
+                        permission: 'DNS',
+                        level: 'tokenGuideReadEdit',
+                      ),
+                      _permissionRow(
+                        context,
                         scope: 'tokenGuideAccount',
                         permission: 'Account Settings',
                         level: 'tokenGuideRead',

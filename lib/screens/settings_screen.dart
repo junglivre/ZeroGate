@@ -227,14 +227,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await LocalStorage.saveToken(_tokenController.text.trim());
     try {
       final accounts = await CloudflareApi.listAccounts();
+      var zones = 0;
+      var dnsReadable = true;
+      try {
+        await for (final _ in CloudflareApi.streamPaginated('/zones')) {
+          zones++;
+        }
+      } catch (_) {
+        dnsReadable = false;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(context.l10n.text('connectionSuccess',
-              values: {'count': '${accounts.length}'})),
+              values: {'count': '${accounts.length}', 'zones': '$zones'})),
           backgroundColor: AppColors.success,
         ),
       );
+      if (zones == 0 || !dnsReadable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.text('connectionNoDns')),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

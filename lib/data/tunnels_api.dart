@@ -49,38 +49,26 @@ class TunnelsApi {
     return routes;
   }
 
-  /// Ingress rules (Public Hostname routes) currently configured for the
-  /// tunnel. Returns an empty list if the tunnel has no remote configuration
-  /// yet.
-  static Future<List<dynamic>> getIngressRules(
+  /// Returns the tunnel configuration, or `null` before one has been saved.
+  static Future<Map<String, dynamic>?> getTunnelConfig(
       String accountId, String tunnelId) async {
     final json = await CloudflareApi.getJson(
       '/accounts/$accountId/cfd_tunnel/$tunnelId/configurations',
     );
     final config = json['result']?['config'];
-    final ingress = config?['ingress'];
-    return ingress is List ? List<dynamic>.from(ingress) : <dynamic>[];
+    return config is Map ? Map<String, dynamic>.from(config) : null;
   }
 
-  /// Replaces the tunnel's ingress rules. `rules` must not include the
-  /// catch-all entry — it is appended automatically so every saved
-  /// configuration stays valid (Cloudflare requires the last ingress rule to
-  /// have no hostname).
-  static Future<void> saveIngressRules(
+  /// Replaces the complete tunnel configuration as required by Cloudflare's
+  /// configurations endpoint.
+  static Future<void> saveTunnelConfig(
     String accountId,
     String tunnelId,
-    List<Map<String, dynamic>> rules,
+    Map<String, dynamic> config,
   ) async {
     await CloudflareApi.put(
       '/accounts/$accountId/cfd_tunnel/$tunnelId/configurations',
-      {
-        'config': {
-          'ingress': [
-            ...rules,
-            {'service': 'http_status:404'},
-          ],
-        },
-      },
+      {'config': config},
     );
   }
 }

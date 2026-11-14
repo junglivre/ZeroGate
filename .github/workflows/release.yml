@@ -33,7 +33,7 @@ permissions:
 jobs:
   analyze_test:
     name: Analyze & test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -47,7 +47,7 @@ jobs:
   create_release:
     name: Create release
     needs: analyze_test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Extract changelog section
@@ -76,7 +76,7 @@ jobs:
   build_android:
     name: Build & upload Android APKs
     needs: create_release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -118,7 +118,7 @@ jobs:
   build_linux:
     name: Build & upload Linux bundle
     needs: create_release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -271,7 +271,8 @@ jobs:
   build_windows:
     name: Build & upload Windows bundle
     needs: create_release
-    runs-on: windows-latest
+    # windows-2022 ships NSIS; windows-2025 (current windows-latest) does not.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -286,14 +287,92 @@ jobs:
         env:
           CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
         run: flutter build windows --release
-      - name: Package bundle
+      - name: Package portable zip and NSIS installer
         shell: pwsh
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "zerogate-$env:VERSION-windows-x64.zip"
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          if (Test-Path package) {
+            Remove-Item -Recurse -Force package
+          }
+          New-Item -ItemType Directory -Force -Path package\zerogate | Out-Null
+          Copy-Item -Path build\windows\x64\runner\Release\* -Destination package\zerogate -Recurse -Force
+          Copy-Item -Path windows\runner\resources\app_icon.ico -Destination package\zerogate\app_icon.ico -Force
+
+          # Bundle the VC++ runtime so the app runs without the redistributable installed.
+          $runtimeDlls = @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")
+          $redistRoots = @()
+          if ($env:VCToolsRedistDir) {
+            $redistRoots += $env:VCToolsRedistDir
+          }
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            $vsInstallPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($vsInstallPath) {
+              $redistRoots += Join-Path $vsInstallPath "VC\Redist\MSVC"
+            }
+          }
+
+          foreach ($dll in $runtimeDlls) {
+            $source = $null
+            foreach ($root in $redistRoots) {
+              if (-not (Test-Path $root)) {
+                continue
+              }
+              $source = Get-ChildItem -Path $root -Recurse -Filter $dll -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match "\\x64\\Microsoft\\.VC.*\\.CRT\\" } |
+                Select-Object -First 1
+              if ($source) {
+                break
+              }
+            }
+
+            if ($source) {
+              Copy-Item -Path $source.FullName -Destination package\zerogate -Force
+            } else {
+              Write-Warning "Could not find $dll in Visual Studio redistributable directories."
+            }
+          }
+
+          Compress-Archive `
+            -Path package\zerogate\* `
+            -DestinationPath "dist\zerogate-$env:VERSION-windows-x64.zip" `
+            -Force
+
+          $makensisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          if ($makensisCommand) {
+            $makensis = $makensisCommand.Source
+          } else {
+            $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+            if (-not (Test-Path $makensis)) {
+              $makensis = "$env:ProgramFiles\NSIS\makensis.exe"
+            }
+          }
+          if (-not (Test-Path $makensis)) {
+            choco install nsis -y --no-progress | Out-Host
+            $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          }
+          if (-not (Test-Path $makensis)) {
+            throw "NSIS compiler (makensis.exe) was not found on the runner."
+          }
+
+          & $makensis `
+            "/DVERSION=$env:VERSION" `
+            "/DSOURCE_DIR=$PWD\package\zerogate" `
+            "/DOUTPUT_DIR=$PWD\dist" `
+            "/DOUTPUT_FILE=zerogate-$env:VERSION-windows-x64-setup.exe" `
+            "windows\installer.nsi" | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "makensis.exe failed with exit code $LASTEXITCODE"
+          }
       - name: Upload to release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$VERSION" "zerogate-${VERSION}-windows-x64.zip" --clobber
+        run: |
+          gh release upload "$VERSION" \
+            "dist/zerogate-${VERSION}-windows-x64.zip" \
+            "dist/zerogate-${VERSION}-windows-x64-setup.exe" --clobber
 
   build_macos:
     name: Build & upload macOS bundle

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-11-14
+### Fixed
+- Routes created without DNS now synchronize their proxied CNAME records.
+- Saving routes no longer overwrites the rest of the tunnel configuration.
+- Editing a route no longer loses its `path`.
+
+### Changed
+- Cloudflare API tokens now require `Zone: Read` and `DNS: Edit`, with the appropriate Zone Resources scope.
+- Route hostnames are canonicalized to lowercase, without surrounding spaces or a trailing dot.
+- Windows releases now ship an NSIS installer (`-setup.exe`) alongside the portable `.zip`; both bundle the Visual C++ runtime.
+
 ## [1.0.2] - 2026-10-02
 ### Added
 - Tunnel list now shows each tunnel's uptime next to its status and connector count (hidden while the tunnel is offline).
@@ -22,6 +33,6 @@ All notable changes to this project will be documented in this file.
 - Cloudflare Tunnel listing with status and active connectors.
 - Route editor (Public Hostname) with a destination type selector (http, https, tcp, ssh, rdp, smb, unix, unix+tls) and advanced HTTP/HTTPS settings.
 - Listing, creating, editing, and deleting Access Apps, with a policy editor (email, email domain, everyone, IP).
-- Portuguese, English, and Spanish UI; light, dark, or automatic theme.
+- Portuguese and English UI; light, dark, or automatic theme.
 - In-app version history (changelog) view.
 - Automated builds via GitHub Actions for Android, Linux, macOS, and Windows, with releases triggered by pushing a version tag (`X.Y.Z`, no leading `v`).

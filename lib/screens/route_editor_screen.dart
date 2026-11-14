@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../data/ingress_rule_validator.dart';
+import '../data/tunnel_dns.dart';
 import '../l10n/app_localizations.dart';
 
 /// The `originRequest` keys this screen knows how to edit. Anything else
@@ -30,8 +31,7 @@ const _kKnownOriginRequestKeys = {
 /// timeouts, keep-alive, HTTP/2, proxying).
 ///
 /// Returns the built rule map via `Navigator.pop` (or `null` if cancelled).
-/// Saving all routes together (via `TunnelsApi.saveIngressRules`) is the
-/// caller's responsibility.
+/// Saving the complete tunnel configuration is the caller's responsibility.
 class RouteEditorScreen extends StatefulWidget {
   final Map<String, dynamic>? route;
 
@@ -62,6 +62,7 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
   final _keepAliveTimeoutController = TextEditingController();
 
   Map<String, dynamic> _passthroughOriginRequest = {};
+  Map<String, dynamic> _passthroughRule = {};
 
   bool get _isEditing => widget.route != null;
   bool get _isHttpScheme => IngressRuleValidator.isHttpScheme(_scheme);
@@ -71,6 +72,10 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
     super.initState();
     final route = widget.route;
     if (route != null) {
+      _passthroughRule = Map<String, dynamic>.from(route)
+        ..remove('hostname')
+        ..remove('service')
+        ..remove('originRequest');
       _hostnameController.text = route['hostname'] ?? '';
       final parsed = IngressRuleValidator.parseService(route['service'] ?? '');
       _scheme = kIngressServiceSchemes.contains(parsed.scheme)
@@ -133,7 +138,7 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
   }
 
   void _save() {
-    final hostname = _hostnameController.text.trim();
+    final hostname = TunnelDns.normalize(_hostnameController.text);
     final address = _addressController.text.trim();
 
     final hostnameError = IngressRuleValidator.validateHostname(hostname);
@@ -155,6 +160,7 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
     }
 
     final result = <String, dynamic>{
+      ..._passthroughRule,
       'hostname': hostname,
       'service': IngressRuleValidator.buildService(_scheme, address),
     };
@@ -164,7 +170,9 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
       if (_noTLSVerify) originRequest['noTLSVerify'] = true;
       if (_matchSNItoHost) originRequest['matchSNItoHost'] = true;
       if (_http2Origin) originRequest['http2Origin'] = true;
-      if (_disableChunkedEncoding) originRequest['disableChunkedEncoding'] = true;
+      if (_disableChunkedEncoding) {
+        originRequest['disableChunkedEncoding'] = true;
+      }
       if (_noHappyEyeballs) originRequest['noHappyEyeballs'] = true;
       if (_proxyType.isNotEmpty) originRequest['proxyType'] = _proxyType;
       if (_originServerNameController.text.trim().isNotEmpty) {
@@ -327,6 +335,7 @@ class _RouteEditorScreenState extends State<RouteEditorScreen> {
                 width: 130,
                 child: DropdownButtonFormField<String>(
                   initialValue: _scheme,
+                  isExpanded: true,
                   decoration: const InputDecoration(isDense: true),
                   items: kIngressServiceSchemes
                       .map((scheme) => DropdownMenuItem(

@@ -48,6 +48,16 @@ O AAB será gerado em:
 build/app/outputs/bundle/release/app-release.aab
 ```
 
+## JDK para build local
+
+O toolchain Android do projeto (AGP 8.11, Kotlin 2.2.20) exige JDK 17 ou 21 no Gradle; com JDK 25 o build falha com `IllegalArgumentException: 25.0.2` vindo do compilador Kotlin. O CI usa Java 17. Para um build local sem trocar o Java padrão da máquina:
+
+```bash
+JAVA_HOME=~/.sdkman/candidates/java/17.0.20-tem flutter build apk --release
+```
+
+Ou fixe `org.gradle.java.home` em `~/.gradle/gradle.properties`.
+
 ## Assinatura dos artefatos
 
 Os builds Android release exigem `android/key.properties` com as credenciais da keystore persistente. Sem esse arquivo, o Gradle interrompe o build.

@@ -11,7 +11,7 @@ ZeroGate
 
 # Política de Privacidade — ZeroGate
 
-**Última atualização: 27 de julho de 2026**
+**Última atualização: 14 de novembro de 2026**
 
 O ZeroGate foi desenvolvido com foco em privacidade e segurança. Esta Política de Privacidade explica como as informações são tratadas durante o uso do aplicativo.
 
@@ -49,7 +49,7 @@ O desenvolvedor não possui acesso a essas informações.
 
 Para executar suas funcionalidades, o aplicativo se comunica diretamente com a API oficial da Cloudflare.
 
-O token da API e os dados necessários para consultar ou modificar túneis, rotas e Access Apps são enviados exclusivamente à Cloudflare por meio de conexão HTTPS. Essas informações não passam por servidores controlados pelo desenvolvedor.
+O token da API e os dados necessários para consultar ou modificar túneis, rotas, registros DNS e Access Apps são enviados exclusivamente à Cloudflare por meio de conexão HTTPS. Essas informações não passam por servidores controlados pelo desenvolvedor.
 
 A Cloudflare poderá processar informações técnicas inerentes à conexão, como endereço IP e registros de acesso, de acordo com sua própria política de privacidade.
 
@@ -98,7 +98,7 @@ Esta Política de Privacidade poderá ser atualizada para refletir mudanças no 
 
 # Privacy Policy — ZeroGate
 
-**Last updated: July 27, 2026**
+**Last updated: November 14, 2026**
 
 ZeroGate was developed with privacy and security in mind. This Privacy Policy explains how information is handled while you use the application.
 
@@ -136,7 +136,7 @@ The developer does not have access to this information.
 
 To provide its features, the application communicates directly with the official Cloudflare API.
 
-The API token and the data required to view or modify tunnels, routes, and Access Apps are sent exclusively to Cloudflare over an HTTPS connection. This information does not pass through servers controlled by the developer.
+The API token and the data required to view or modify tunnels, routes, DNS records, and Access Apps are sent exclusively to Cloudflare over an HTTPS connection. This information does not pass through servers controlled by the developer.
 
 Cloudflare may process technical information inherent to the connection, such as the IP address and access logs, in accordance with its own privacy policy.
 

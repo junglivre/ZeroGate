@@ -25,7 +25,7 @@ Este README contém as informações compartilhadas entre as plataformas. Para c
 - Logout automático ao fechar e reabrir o aplicativo, exigindo novo login.
 - Seleção/troca entre as contas Cloudflare que o token enxerga.
 - Lista de túneis Cloudflare Tunnel com status (saudável, degradado, inativo), conectores ativos, tempo de atividade por túnel e as rotas de rede privada do túnel (rotas CIDR somente leitura, marcadas quando o range também é roteado por outro túnel).
-- Editor de rotas (Public Hostname / ingress rules) de cada túnel: criar, editar e excluir hostname → serviço local, com seletor de tipo de destino (http, https, tcp, ssh, rdp, smb, unix, unix+tls) e configurações avançadas de HTTP/HTTPS (TLS/SSL do destino, SNI, cabeçalho Host, HTTP/2, timeouts, keep-alive, proxy).
+- Editor de rotas (Public Hostname / ingress rules) de cada túnel: criar, editar e excluir hostname → serviço local, criando e removendo o CNAME proxied da rota, com seletor de tipo de destino (http, https, tcp, ssh, rdp, smb, unix, unix+tls) e configurações avançadas de HTTP/HTTPS (TLS/SSL do destino, SNI, cabeçalho Host, HTTP/2, timeouts, keep-alive, proxy).
 - Lista de Access Apps (self-hosted) com criação, edição de nome/domínio/duração de sessão e exclusão.
 - Editor de políticas de Access por app: ação (Permitir/Bloquear/Bypass/Service Auth) e regras Incluir/Excluir/Exigir para os seletores mais comuns (e-mail, domínio de e-mail, todos, IP). Regras com seletores não suportados pelo editor são preservadas sem alteração.
 - Tema claro, escuro ou automático pelo sistema.
@@ -54,10 +54,12 @@ Crie um token customizado com as seguintes permissões:
 | Account | `Access: Apps and Policies` | Leitura, Edição |
 | Account | `Account Settings` | Leitura |
 | User | `Memberships` | Leitura |
+| Zone | `Zone` | Leitura |
+| Zone | `DNS` | Edição |
 
-As duas primeiras dão acesso aos túneis/rotas e Access Apps. As duas últimas (`Account Settings` e `Memberships`) são o que faz a(s) conta(s) aparecerem na tela de seleção de conta do app — sem elas, o teste de conexão passa, mas a lista de contas vem vazia.
+As duas primeiras dão acesso aos túneis/rotas e Access Apps. `Account Settings` e `Memberships` são o que faz a(s) conta(s) aparecerem na tela de seleção de conta do app — sem elas, o teste de conexão passa, mas a lista de contas vem vazia. `Zone` e `DNS` permitem ao app achar a zona de cada hostname de rota e criar, atualizar ou remover o CNAME correspondente — sem elas, o teste de conexão avisa que as zonas DNS não puderam ser lidas, as rotas mostram DNS "desconhecido" e rotas novas só podem ser salvas sem DNS.
 
-Ao criar o token, em **Account Resources** selecione todas as contas que deseja gerenciar por este app — o app lista essas contas e permite trocar entre elas. Isso evita usar a Global API Key (acesso irrestrito a toda a conta Cloudflare), preferindo um token com escopo explícito.
+Ao criar o token, em **Account Resources** selecione todas as contas que deseja gerenciar por este app — o app lista essas contas e permite trocar entre elas. Em **Zone Resources**, selecione **All zones** ou **All zones from an account** para cada conta gerenciada, para que o app enxergue as zonas onde gerencia os registros DNS das rotas. Isso evita usar a Global API Key (acesso irrestrito a toda a conta Cloudflare), preferindo um token com escopo explícito.
 
 ## Arquitetura
 
@@ -77,6 +79,9 @@ Ao criar o token, em **Account Resources** selecione todas as contas que deseja 
 ## Escopo e limitações conhecidas
 
 - Rotas gerenciadas são as regras de ingress/Public Hostname do túnel (o que aparece na aba "Public Hostname" do dashboard) — essas são editáveis. O roteamento de rede privada por CIDR (`teamnet/routes`, usado por WARP/Cloudflare Mesh) é exibido somente leitura na tela de detalhe do túnel; o app não cria nem edita essas rotas.
+- Ao excluir uma rota, o app remove um registro DNS somente quando ele é um CNAME que aponta para aquele túnel e nenhuma rota restante do túnel usa o mesmo hostname. Rotas que compartilham hostname com paths diferentes mantêm o CNAME.
+- Se não houver zona acessível para o hostname, ou se a consulta de DNS falhar, o app pode salvar a rota sem DNS e mostra o CNAME que deve ser criado manualmente; tente novamente depois de restaurar o acesso quando o estado do DNS for desconhecido.
+- Túneis Cloudflare FedRAMP High (`<uuid>.fed-cfargotunnel.com`) estão fora do escopo suportado de sincronização de DNS.
 - Conectores do túnel são somente leitura — são geridos pelo daemon `cloudflared`, não por este app.
 - O editor de políticas de Access cobre os seletores mais comuns (e-mail, domínio de e-mail, todos, IP). Seletores mais avançados (grupos de IdP, postura de dispositivo, geolocalização, service tokens) precisam do painel Cloudflare; o app preserva essas regras sem descartá-las.
 
@@ -90,7 +95,7 @@ Ao criar o token, em **Account Resources** selecione todas as contas que deseja 
 
 ## Problemas Conhecidos
 
-- A versão para Windows exige o Microsoft Visual C++ Redistributable 2015-2022 instalado para executar. Sem esse runtime, o Windows pode exibir erro informando a falta das DLLs `MSVCP140.dll`, `VCRUNTIME140.dll` ou `VCRUNTIME140_1.dll`. Instale pelo site oficial da Microsoft: [Latest supported Visual C++ Redistributable downloads](https://learn.microsoft.com/pt-br/cpp/windows/latest-supported-vc-redist).
+- As releases Windows incluem as DLLs do runtime do Visual C++. Se você compilar localmente e o Windows acusar falta de `MSVCP140.dll`, `VCRUNTIME140.dll` ou `VCRUNTIME140_1.dll`, instale o [Microsoft Visual C++ Redistributable 2015-2022](https://learn.microsoft.com/pt-br/cpp/windows/latest-supported-vc-redist).
 
 ## Licença
 

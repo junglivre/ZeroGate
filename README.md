@@ -19,7 +19,7 @@ This README contains information shared by all platforms. For build commands, te
 - Automatic logout when the application is closed and reopened.
 - Selecting/switching between the Cloudflare accounts the token can see.
 - Cloudflare Tunnel list with status (healthy, degraded, down), active connectors, and per-tunnel uptime, plus the tunnel's private-network routes (read-only CIDR routes, flagged when a range is also routed by another tunnel).
-- Route editor (Public Hostname / ingress rules) for each tunnel: create, edit, and delete hostname → local service mappings, with a destination type selector (http, https, tcp, ssh, rdp, smb, unix, unix+tls) and advanced HTTP/HTTPS settings (origin TLS/SSL verification, SNI, Host header, HTTP/2, timeouts, keep-alive, proxying).
+- Route editor (Public Hostname / ingress rules) for each tunnel: create, edit, and delete hostname → local service mappings, creating and removing the route's proxied CNAME, with a destination type selector (http, https, tcp, ssh, rdp, smb, unix, unix+tls) and advanced HTTP/HTTPS settings (origin TLS/SSL verification, SNI, Host header, HTTP/2, timeouts, keep-alive, proxying).
 - Access App list (self-hosted) with creation, editing of name/domain/session duration, and deletion.
 - Per-app Access policy editor: action (Allow/Block/Bypass/Service Auth) and Include/Exclude/Require rules for the most common selectors (email, email domain, everyone, IP). Rules using selectors the editor doesn't support are preserved unchanged.
 - Light, dark, or system theme.
@@ -47,10 +47,12 @@ Create a custom token with these permissions:
 | Account | `Access: Apps and Policies` | Read, Edit |
 | Account | `Account Settings` | Read |
 | User | `Memberships` | Read |
+| Zone | `Zone` | Read |
+| Zone | `DNS` | Edit |
 
-The first two grant access to tunnels/routes and Access Apps. The last two (`Account Settings` and `Memberships`) are what makes the account(s) show up on the app's account picker — without them, the connection test passes but the account list comes back empty.
+The first two grant access to tunnels/routes and Access Apps. `Account Settings` and `Memberships` are what makes the account(s) show up on the app's account picker — without them, the connection test passes but the account list comes back empty. `Zone` and `DNS` let the app find the zone of each route hostname and create, update or remove its CNAME record — without them, the connection test warns that DNS zones could not be read, routes show an "unknown" DNS status, and new routes can only be saved without DNS.
 
-When creating the token, under **Account Resources** select every account you want to manage from this app — the app lists those accounts and lets you switch between them. This avoids using the Global API Key (unrestricted access to the whole Cloudflare account) in favor of an explicitly scoped token.
+When creating the token, under **Account Resources** select every account you want to manage from this app — the app lists those accounts and lets you switch between them. Under **Zone Resources**, select **All zones** or **All zones from an account** for each managed account, so the app can see the zones where it manages route DNS records. This avoids using the Global API Key (unrestricted access to the whole Cloudflare account) in favor of an explicitly scoped token.
 
 ## Architecture
 
@@ -64,12 +66,15 @@ When creating the token, under **Account Resources** select every account you wa
 ## Automated builds (GitHub Actions)
 
 - **CI** (`.github/workflows/ci.yml`): runs on every push/PR to `main`. Runs `flutter analyze` + `flutter test` and, if that passes, builds Android (debug, split per ABI), Linux, macOS, and Windows, publishing each as a workflow *artifact* (repo's **Actions** tab) — handy for grabbing and testing any commit without waiting for a release.
-- **Release** (`.github/workflows/release.yml`): triggered by pushing a version tag (e.g. `git tag 1.0.0 && git push origin 1.0.0` — no leading `v`, same convention as the author's other projects). Creates the [GitHub Release](https://github.com/junglivre/ZeroGate/releases) using the matching `CHANGELOG.md` section as the notes, then builds all four platforms in release mode and attaches the files to it (Linux ships as a `.tar.gz` bundle plus `.deb`/`.rpm` packages).
+- **Release** (`.github/workflows/release.yml`): triggered by pushing a version tag (e.g. `git tag 1.0.0 && git push origin 1.0.0` — no leading `v`, same convention as the author's other projects). Creates the [GitHub Release](https://github.com/junglivre/ZeroGate/releases) using the matching `CHANGELOG.md` section as the notes, then builds all four platforms in release mode and attaches the files to it (Linux ships as a `.tar.gz` bundle plus `.deb`/`.rpm` packages; Windows ships as a portable `.zip` plus an NSIS `-setup.exe` installer, both bundling the VC++ runtime).
 - **Android signing**: release APKs are signed with a persistent upload keystore, decoded at build time from the `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` repo secrets — never committed to the repo. It's the same upload key used across the author's other apps (that's how Play App Signing is meant to work: the upload key only authenticates uploads, Google manages the actual app signing key per app). Because the key is persistent, APKs from consecutive releases install over each other as an update.
 
 ## Scope and known limitations
 
 - Managed routes are the tunnel's ingress/Public Hostname rules (what shows up under the "Public Hostname" tab in the dashboard) — those are editable. Private-network CIDR routing (`teamnet/routes`, used by WARP/Cloudflare Mesh) is shown read-only on the tunnel detail screen; the app does not create or edit it.
+- When deleting a route, the app removes a DNS record only when it is a CNAME pointing to that tunnel and no remaining route on that tunnel uses the same hostname. Routes that share a hostname with different paths keep their CNAME.
+- If no accessible zone is available for a hostname, or if DNS lookup fails, the app can save the route without DNS and shows the CNAME that must be created manually; retry after restoring access when the DNS state is unknown.
+- Cloudflare FedRAMP High tunnels (`<uuid>.fed-cfargotunnel.com`) are outside the supported DNS synchronization scope.
 - Tunnel connectors are read-only — they are managed by the `cloudflared` daemon, not by this app.
 - The Access policy editor covers the most common selectors (email, email domain, everyone, IP). More advanced selectors (IdP groups, device posture, geolocation, service tokens) still require the Cloudflare dashboard; the app preserves those rules instead of discarding them.
 
@@ -83,7 +88,7 @@ When creating the token, under **Account Resources** select every account you wa
 
 ## Known issue
 
-Windows requires Microsoft Visual C++ Redistributable 2015–2022. Install it from [Microsoft's official download page](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) if `MSVCP140.dll`, `VCRUNTIME140.dll`, or `VCRUNTIME140_1.dll` is missing.
+Release builds of Windows bundle the Visual C++ runtime DLLs. If you build locally and `MSVCP140.dll`, `VCRUNTIME140.dll`, or `VCRUNTIME140_1.dll` is reported missing, install the [Microsoft Visual C++ Redistributable 2015–2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
 
 ## License
 

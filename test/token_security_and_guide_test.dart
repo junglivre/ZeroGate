@@ -80,9 +80,10 @@ void main() {
     expect(find.text('Permission'), findsOneWidget);
     expect(find.text('Level'), findsOneWidget);
     expect(find.text('Account'), findsNWidgets(3));
+    expect(find.text('Zone'), findsNWidgets(3));
     expect(find.text('User'), findsOneWidget);
-    expect(find.text('Read, Edit'), findsNWidgets(2));
-    expect(find.text('Read'), findsNWidgets(2));
+    expect(find.text('Read, Edit'), findsNWidgets(3));
+    expect(find.text('Read'), findsNWidgets(3));
 
     await tester.ensureVisible(find.text('Configure token'));
     await tester.pumpAndSettle();

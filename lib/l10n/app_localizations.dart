@@ -31,13 +31,16 @@ class AppLocalizations {
       'settings': 'Settings',
       'apiToken': 'Cloudflare API Token',
       'apiTokenPermissionsHint':
-          'The token needs account-level permission for Cloudflare Tunnel (Read, Edit) and Access: Apps and Policies (Read, Edit), scoped to every account you want to manage.',
+          'The token needs account-level permission for Cloudflare Tunnel (Read, Edit) and Access: Apps and Policies (Read, Edit), plus Zone (Read) and DNS (Edit) permissions, scoped to every account and zone you want to manage.',
       'test': 'TEST',
       'save': 'Save',
       'tokenSaved': 'Token saved!',
       'saved': 'Saved!',
-      'connectionSuccess': 'Connection successful! {count} account(s) found.',
+      'connectionSuccess':
+          'Connection successful! {count} account(s) and {zones} zone(s) found.',
       'connectionFailed': 'Connection failed. Invalid token.',
+      'connectionNoDns':
+          'The token is valid, but DNS zones could not be read. Add Zone (Read), DNS (Edit), and Zone Resources permissions.',
       'appTheme': 'App theme',
       'themeDescription':
           'Choose a fixed theme or automatically use the system theme.',
@@ -104,11 +107,12 @@ class AppLocalizations {
       'tokenGuidePermission': 'Permission',
       'tokenGuideLevel': 'Level',
       'tokenGuideAccount': 'Account',
+      'tokenGuideZone': 'Zone',
       'tokenGuideUser': 'User',
       'tokenGuideRead': 'Read',
       'tokenGuideReadEdit': 'Read, Edit',
       'tokenGuideStep3':
-          'Select the accounts under Account Resources, create and copy the token, then configure it here.',
+          'Select the accounts under Account Resources and the zones under Zone Resources, create and copy the token, then configure it here.',
       'openCloudflareTokens': 'Open Cloudflare API Tokens',
       'accounts': 'Accounts',
       'switchAccount': 'Switch account',
@@ -140,14 +144,43 @@ class AppLocalizations {
       'noRoutes': 'No routes configured.',
       'uptime': 'uptime: {duration}',
       'privateRoutes': 'Private Network Routes',
-      'noPrivateRoutes': 'No private network routes configured for this tunnel.',
+      'noPrivateRoutes':
+          'No private network routes configured for this tunnel.',
       'sharedRoute': 'Shared',
       'addRoute': 'Add route',
       'editRoute': 'Edit route',
       'hostname': 'Hostname',
       'destination': 'Destination',
       'deleteRouteConfirmTitle': 'Confirm deletion',
-      'deleteRouteConfirm': 'Delete the route {hostname}?',
+      'deleteRouteConfirm':
+          'Delete the route {hostname}? ZeroGate also removes its CNAME when it points to this tunnel.',
+      'dnsOk': 'DNS connected',
+      'dnsMissing': 'Tunnel CNAME is missing',
+      'dnsNoZone': 'No visible DNS zone for this hostname',
+      'dnsUnknown': 'DNS status is unknown',
+      'dnsFix': 'Fix DNS',
+      'dnsUnavailableBanner':
+          'ZeroGate could not read DNS zones. Check DNS permissions in Settings.',
+      'dnsConflictTitle': 'DNS record conflict',
+      'dnsConflictBody':
+          'A {type} record already exists and points to {content}. Replace it with this tunnel CNAME?',
+      'dnsReplace': 'Replace',
+      'dnsBlockedBody':
+          'Multiple A, AAAA, or CNAME records exist at this hostname. Manage them in Cloudflare before saving this route.',
+      'dnsNoZoneTitle': 'DNS record was not created',
+      'dnsNoZoneBody':
+          'No zone is visible for {hostname}. To make it work, create a proxied CNAME manually: {hostname} to {target}.',
+      'dnsUnknownBody':
+          'The DNS status could not be read. Check your Zone and DNS permissions, then try again.',
+      'saveWithoutDns': 'Save without DNS',
+      'dnsSyncError': 'Route saved, but DNS could not be updated: {error}',
+      'dnsDeleteError':
+          'Route saved, but DNS for {hostname} could not be removed: {error}',
+      'dnsChangedRetry': 'The DNS record changed elsewhere. Try again.',
+      'dnsOrphans': 'Orphan DNS',
+      'deleteOrphanConfirm': 'Delete the orphan tunnel CNAME {name}?',
+      'routeChangedElsewhere':
+          'This route changed elsewhere. The tunnel data was reloaded.',
       'advancedHttpSettings': 'Advanced settings (HTTP/HTTPS)',
       'noTLSVerify': 'Skip TLS/SSL verification of the origin',
       'noTLSVerifyHint':
@@ -213,14 +246,16 @@ class AppLocalizations {
       'settings': 'Configurações',
       'apiToken': 'Token da API Cloudflare',
       'apiTokenPermissionsHint':
-          'O token precisa de permissão de conta para Cloudflare Tunnel (Leitura, Edição) e Access: Apps and Policies (Leitura, Edição), com acesso a todas as contas que deseja gerenciar.',
+          'O token precisa de permissão de conta para Cloudflare Tunnel (Leitura, Edição) e Access: Apps and Policies (Leitura, Edição), além das permissões Zone (Leitura) e DNS (Edição), com acesso a todas as contas e zonas que deseja gerenciar.',
       'test': 'TESTAR',
       'save': 'Salvar',
       'tokenSaved': 'Token salvo!',
       'saved': 'Salvo!',
       'connectionSuccess':
-          'Conexão bem-sucedida! {count} conta(s) encontrada(s).',
+          'Conexão bem-sucedida! {count} conta(s) e {zones} zona(s) encontrada(s).',
       'connectionFailed': 'Falha na conexão. Token inválido.',
+      'connectionNoDns':
+          'O token é válido, mas não foi possível ler as zonas DNS. Adicione as permissões Zone (Leitura), DNS (Edição) e Zone Resources.',
       'appTheme': 'Tema do aplicativo',
       'themeDescription':
           'Escolha um tema fixo ou use automaticamente o tema configurado no sistema.',
@@ -289,11 +324,12 @@ class AppLocalizations {
       'tokenGuidePermission': 'Permissão',
       'tokenGuideLevel': 'Nível',
       'tokenGuideAccount': 'Conta',
+      'tokenGuideZone': 'Zona',
       'tokenGuideUser': 'Usuário',
       'tokenGuideRead': 'Leitura',
       'tokenGuideReadEdit': 'Leitura, Edição',
       'tokenGuideStep3':
-          'Selecione as contas em Recursos da conta, crie e copie o token e configure-o aqui.',
+          'Selecione as contas em Account Resources e as zonas em Zone Resources, crie e copie o token e configure-o aqui.',
       'openCloudflareTokens': 'Abrir Tokens de API da Cloudflare',
       'accounts': 'Contas',
       'switchAccount': 'Trocar conta',
@@ -325,14 +361,45 @@ class AppLocalizations {
       'noRoutes': 'Nenhuma rota configurada.',
       'uptime': 'uptime: {duration}',
       'privateRoutes': 'Rotas de Rede Privada',
-      'noPrivateRoutes': 'Nenhuma rota de rede privada configurada para este túnel.',
+      'noPrivateRoutes':
+          'Nenhuma rota de rede privada configurada para este túnel.',
       'sharedRoute': 'Compartilhada',
       'addRoute': 'Adicionar rota',
       'editRoute': 'Editar rota',
       'hostname': 'Hostname',
       'destination': 'Destino',
       'deleteRouteConfirmTitle': 'Confirmar exclusão',
-      'deleteRouteConfirm': 'Excluir a rota {hostname}?',
+      'deleteRouteConfirm':
+          'Excluir a rota {hostname}? O ZeroGate também remove o CNAME se ele apontar para este túnel.',
+      'dnsOk': 'DNS conectado',
+      'dnsMissing': 'CNAME do túnel ausente',
+      'dnsNoZone': 'Nenhuma zona DNS visível para este hostname',
+      'dnsUnknown': 'Estado do DNS desconhecido',
+      'dnsFix': 'Corrigir DNS',
+      'dnsUnavailableBanner':
+          'O ZeroGate não conseguiu ler as zonas DNS. Verifique as permissões de DNS em Configurações.',
+      'dnsConflictTitle': 'Conflito de registro DNS',
+      'dnsConflictBody':
+          'Já existe um registro {type} apontando para {content}. Substituí-lo pelo CNAME deste túnel?',
+      'dnsReplace': 'Substituir',
+      'dnsBlockedBody':
+          'Há vários registros A, AAAA ou CNAME neste hostname. Gerencie-os na Cloudflare antes de salvar esta rota.',
+      'dnsNoZoneTitle': 'Registro DNS não criado',
+      'dnsNoZoneBody':
+          'Nenhuma zona está visível para {hostname}. Para fazê-lo funcionar, crie manualmente um CNAME com proxy: {hostname} para {target}.',
+      'dnsUnknownBody':
+          'Não foi possível ler o estado do DNS. Verifique as permissões Zone e DNS e tente novamente.',
+      'saveWithoutDns': 'Salvar sem DNS',
+      'dnsSyncError':
+          'Rota salva, mas não foi possível atualizar o DNS: {error}',
+      'dnsDeleteError':
+          'Rota salva, mas não foi possível remover o DNS de {hostname}: {error}',
+      'dnsChangedRetry':
+          'O registro DNS mudou em outro lugar. Tente novamente.',
+      'dnsOrphans': 'DNS órfão',
+      'deleteOrphanConfirm': 'Excluir o CNAME órfão do túnel {name}?',
+      'routeChangedElsewhere':
+          'Esta rota mudou em outro lugar. Os dados do túnel foram recarregados.',
       'advancedHttpSettings': 'Configurações avançadas (HTTP/HTTPS)',
       'noTLSVerify': 'Ignorar verificação de TLS/SSL do destino',
       'noTLSVerifyHint':

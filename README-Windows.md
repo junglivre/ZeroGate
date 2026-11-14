@@ -50,6 +50,7 @@ build\windows\x64\runner\Release\zerogate.exe
 - Ícone do executável: `windows/runner/resources/app_icon.ico`.
 - Biometria: `local_auth_windows`, usando Windows Hello quando disponível.
 - Segredos locais: `flutter_secure_storage_windows`.
+- Cada [release](https://github.com/junglivre/ZeroGate/releases) publica o Windows em dois formatos: `zerogate-X.Y.Z-windows-x64.zip` (portátil, extrair e rodar) e `zerogate-X.Y.Z-windows-x64-setup.exe` (instalador NSIS gerado de `windows/installer.nsi`, instala por usuário em `%LOCALAPPDATA%\Programs\ZeroGate`, cria atalhos e entrada em Programas e Recursos). Ambos incluem as DLLs do runtime do Visual C++.
 
 ## Toolchain no Container
 
